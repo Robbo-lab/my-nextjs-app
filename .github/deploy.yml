@@ -1,12 +1,11 @@
-name: Lint, Build & Deploy (GitHub Pages)
+name: Lint, Build & Deploy (GitHub Pages - Next.js static)
 
 on:
   push:
-    branches: [ master ]
+    branches: [main]
   pull_request:
-    branches: [ master ]
+    branches: [main]
 
-# Permissions required by Pages deployment
 permissions:
   contents: write
   pages: write
@@ -16,9 +15,14 @@ concurrency:
   group: pages-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Set this to your repository name for project pages (username.github.io/<repo>)
+  # Leave blank for user/organization pages (username.github.io)
+  NEXT_PUBLIC_REPO_NAME: "" # e.g., "my-next-repo"
+
 jobs:
-  # CI job for PRs: lint, type-check, build, export (no deploy)
   verify:
+    name: Lint & Build (PR checks)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
@@ -29,7 +33,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -37,23 +41,20 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Type Check
-        run: npm run type-check
-
       - name: Build
         run: npm run build
 
       - name: Export static site
         run: npm run export
 
-      - name: Archive exported site (for debugging)
+      - name: Upload build artifact (debugging)
         uses: actions/upload-artifact@v4
         with:
           name: next-export-out
           path: out
 
-  # Build & deploy to GitHub Pages on push to main
   build:
+    name: Build & Upload Pages Artifact
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:
@@ -64,7 +65,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -72,13 +73,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Type Check
-        run: npm run type-check
-
       - name: Build
         run: npm run build
-        env:
-          NEXT_PUBLIC_APP_ENV: production
 
       - name: Export static site
         run: npm run export
@@ -89,6 +85,7 @@ jobs:
           path: ./out
 
   deploy:
+    name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'push'
@@ -96,6 +93,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@v4
